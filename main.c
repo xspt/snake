@@ -85,6 +85,8 @@ int main() {
 void mainLoop(ALLEGRO_EVENT_QUEUE * queue, ALLEGRO_TIMER * timer) {
    ALLEGRO_EVENT event;
 
+   enum {up, right, down, left} direction = left;
+
    bool redraw = false;
 
    al_start_timer(timer);
@@ -94,10 +96,41 @@ void mainLoop(ALLEGRO_EVENT_QUEUE * queue, ALLEGRO_TIMER * timer) {
          // Game logic
          case ALLEGRO_EVENT_TIMER:
             redraw = true;
+
+            switch (direction) {
+               case up:
+                  headPos.y -= scaleFactorY;
+                  break;
+               case down:
+                  headPos.y += scaleFactorY;
+                  break;
+               case left:
+                  headPos.x -= scaleFactorX;
+                  break;
+               case right:
+                  headPos.x += scaleFactorX;
+                  break;
+            }
+
+            head = createHead(head, headPos);
+            deleteTail(head);
+
             break;
          // User input
          case ALLEGRO_EVENT_KEY_DOWN:
             switch (event.keyboard.keycode) {
+               case ALLEGRO_KEY_UP:
+                  direction = direction == down ? down : up;
+                  break;
+               case ALLEGRO_KEY_DOWN:
+                  direction = direction == up ? up : down;
+                  break;
+               case ALLEGRO_KEY_LEFT:
+                  direction = direction == right ? right : left;
+                  break;
+               case ALLEGRO_KEY_RIGHT:
+                  direction = direction == left ? left : right;
+                  break;
                // Exit on esc pressed
                case ALLEGRO_KEY_ESCAPE:
                   return;
