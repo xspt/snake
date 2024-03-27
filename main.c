@@ -18,6 +18,7 @@ float scaleFactorY;
 
 void mainLoop(ALLEGRO_EVENT_QUEUE * queue, ALLEGRO_TIMER * timer, ALLEGRO_DISPLAY * display);
 void drawNode(node_t * node);
+node_t * reset(node_t * head, ALLEGRO_DISPLAY * display);
 
 struct point headPos;
 node_t * head = NULL;
@@ -97,9 +98,7 @@ void mainLoop(ALLEGRO_EVENT_QUEUE * queue, ALLEGRO_TIMER * timer, ALLEGRO_DISPLA
          case ALLEGRO_EVENT_TIMER:
             redraw = true;
 
-            if (isColliding(head->next, head->p)) {
-               printf("Colidiu\n");
-            }
+            // printf("[%d, %d]\n", headPos.x, headPos.y);
 
             switch (direction) {
                case up:
@@ -114,6 +113,16 @@ void mainLoop(ALLEGRO_EVENT_QUEUE * queue, ALLEGRO_TIMER * timer, ALLEGRO_DISPLA
                case right:
                   headPos.x += scaleFactorX;
                   break;
+            }
+
+            if (isColliding(head->next, head->p)
+                  || headPos.x < scaleFactorX
+                  || headPos.x > al_get_display_width(display) - scaleFactorX
+                  || headPos.y < scaleFactorY
+                  || headPos.y > al_get_display_height(display) - scaleFactorY) {
+               printf("Colidiu\n");
+               direction = right;
+               head = reset(head, display);
             }
 
             head = createHead(head, headPos);
@@ -154,6 +163,9 @@ void mainLoop(ALLEGRO_EVENT_QUEUE * queue, ALLEGRO_TIMER * timer, ALLEGRO_DISPLA
       if (redraw && al_is_event_queue_empty(queue)) {
          al_clear_to_color(al_map_rgb(0, 0, 0));
 
+         // Draw the snake
+         forEach(head, *drawNode);
+
          // Draw the walls
          //    Horizontally
          for (int i = 0; i <= al_get_display_width(display) - scaleFactorX; i += scaleFactorX) {
@@ -176,9 +188,6 @@ void mainLoop(ALLEGRO_EVENT_QUEUE * queue, ALLEGRO_TIMER * timer, ALLEGRO_DISPLA
             al_draw_rectangle(al_get_display_width(display) - scaleFactorX, i, al_get_display_width(display), i + scaleFactorY, al_map_rgb(0, 0, 0), 1);
          }
 
-         // Draw the snake
-         forEach(head, *drawNode);
-
          al_flip_display();
          redraw = false;
       }
@@ -188,4 +197,20 @@ void mainLoop(ALLEGRO_EVENT_QUEUE * queue, ALLEGRO_TIMER * timer, ALLEGRO_DISPLA
 void drawNode(node_t * node) {
    al_draw_filled_rectangle(node->p.x, node->p.y, node->p.x + scaleFactorX, node->p.y + scaleFactorY, al_map_rgb(0, 255, 0));
    al_draw_rectangle(node->p.x, node->p.y, node->p.x + scaleFactorX, node->p.y + scaleFactorY, al_map_rgb(0, 0, 0), 1);
+}
+
+node_t * reset(node_t * head, ALLEGRO_DISPLAY * display) {
+   deleteSnake(head);
+
+   node_t * newhead = NULL;
+   headPos.x = ((al_get_display_width(display) / scaleFactorX) / 4) * scaleFactorX;
+   headPos.y = ((al_get_display_width(display) / scaleFactorY) / 2) * scaleFactorY;
+
+   // Create a snake with 3 segments to start the game
+   for (int i = 0; i < 3; i++) {
+      newhead = createHead(newhead, headPos);
+      headPos.x = headPos.x + scaleFactorX;
+   }
+
+   return newhead;
 }
