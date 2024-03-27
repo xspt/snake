@@ -44,3 +44,15 @@ void forEach(node_t * head, void (*callback)(node_t * node)) {
    }
 }
 
+int isColliding(node_t * head, struct point p) {
+   node_t * current = head;
+
+   while (current != NULL) {
+      if (current->p.x == p.x && current->p.y == p.y) {
+         return 1;
+      }
+      current = current->next;
+   }
+
+   return 0;
+}

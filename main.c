@@ -61,8 +61,8 @@ int main() {
    scaleFactorX = al_get_display_width(display) / (float) SCALED_WIDTH;
    scaleFactorY = al_get_display_height(display) / (float) SCALED_HEIGHT;
 
-   // Calculate the center of the screen
-   headPos.x = ((al_get_display_width(display) / scaleFactorX) / 2) * scaleFactorX;
+   // Position of the snake tail
+   headPos.x = ((al_get_display_width(display) / scaleFactorX) / 4) * scaleFactorX;
    headPos.y = ((al_get_display_width(display) / scaleFactorY) / 2) * scaleFactorY;
 
    // Create a snake with 3 segments to start the game
@@ -85,7 +85,7 @@ int main() {
 void mainLoop(ALLEGRO_EVENT_QUEUE * queue, ALLEGRO_TIMER * timer) {
    ALLEGRO_EVENT event;
 
-   enum {up, right, down, left} direction = left;
+   enum {up, right, down, left} direction = right;
 
    bool redraw = false;
 
@@ -96,6 +96,10 @@ void mainLoop(ALLEGRO_EVENT_QUEUE * queue, ALLEGRO_TIMER * timer) {
          // Game logic
          case ALLEGRO_EVENT_TIMER:
             redraw = true;
+
+            if (isColliding(head->next, head->p)) {
+               printf("Colidiu\n");
+            }
 
             switch (direction) {
                case up:

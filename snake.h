@@ -24,4 +24,7 @@ void deleteSnake(node_t * head);
 
 void forEach(node_t * head, void (*callback)(node_t * node));
 
+// Checks if point p is colliding with any of the nodes
+int isColliding(node_t * head, struct point p);
+
 #endif
