@@ -16,7 +16,7 @@
 float scaleFactorX;
 float scaleFactorY;
 
-void mainLoop(ALLEGRO_EVENT_QUEUE * queue, ALLEGRO_TIMER * timer);
+void mainLoop(ALLEGRO_EVENT_QUEUE * queue, ALLEGRO_TIMER * timer, ALLEGRO_DISPLAY * display);
 void drawNode(node_t * node);
 
 struct point headPos;
@@ -71,7 +71,7 @@ int main() {
       headPos.x = headPos.x + scaleFactorX;
    }
 
-   mainLoop(queue, timer);
+   mainLoop(queue, timer, display);
 
    // Free resources before exiting
    deleteSnake(head);
@@ -82,7 +82,7 @@ int main() {
    return 0;
 }
 
-void mainLoop(ALLEGRO_EVENT_QUEUE * queue, ALLEGRO_TIMER * timer) {
+void mainLoop(ALLEGRO_EVENT_QUEUE * queue, ALLEGRO_TIMER * timer, ALLEGRO_DISPLAY * display) {
    ALLEGRO_EVENT event;
 
    enum {up, right, down, left} direction = right;
@@ -153,6 +153,28 @@ void mainLoop(ALLEGRO_EVENT_QUEUE * queue, ALLEGRO_TIMER * timer) {
       // Drawing to the screen
       if (redraw && al_is_event_queue_empty(queue)) {
          al_clear_to_color(al_map_rgb(0, 0, 0));
+
+         // Draw the walls
+         //    Horizontally
+         for (int i = 0; i <= al_get_display_width(display) - scaleFactorX; i += scaleFactorX) {
+            // Top row
+            al_draw_filled_rectangle(i, 0, i + scaleFactorX, scaleFactorY, al_map_rgb(255, 255, 255));
+            al_draw_rectangle(i, 0, i + scaleFactorX, scaleFactorY, al_map_rgb(0, 0, 0), 1);
+
+            // Bottom row
+            al_draw_filled_rectangle(i, al_get_display_height(display) - scaleFactorY, i + scaleFactorX, al_get_display_height(display), al_map_rgb(255, 255, 255));
+            al_draw_rectangle(i, al_get_display_height(display) - scaleFactorY, i + scaleFactorX, al_get_display_height(display), al_map_rgb(0, 0, 0), 1);
+         }
+         //    Vertically
+         for (int i = scaleFactorY; i <= al_get_display_height(display) - scaleFactorY * 2; i += scaleFactorY) {
+            // Left row
+            al_draw_filled_rectangle(0, i, scaleFactorX, i + scaleFactorY, al_map_rgb(255, 255, 255));
+            al_draw_rectangle(0, i, scaleFactorX, i + scaleFactorY, al_map_rgb(0, 0, 0), 1);
+
+            // Right row
+            al_draw_filled_rectangle(al_get_display_width(display) - scaleFactorX, i, al_get_display_width(display), i + scaleFactorY, al_map_rgb(255, 255, 255));
+            al_draw_rectangle(al_get_display_width(display) - scaleFactorX, i, al_get_display_width(display), i + scaleFactorY, al_map_rgb(0, 0, 0), 1);
+         }
 
          // Draw the snake
          forEach(head, *drawNode);
