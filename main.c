@@ -33,6 +33,10 @@ int main() {
       return EXIT_FAILURE;
    }
 
+   if (!al_init_primitives_addon()) {
+      printf("Failed to init primitives addon.\n");
+   }
+
    if (!al_install_keyboard()) {
       printf("Failed to init keyboard.\n");
       return EXIT_FAILURE;
