@@ -95,6 +95,7 @@ void mainLoop(ALLEGRO_EVENT_QUEUE * queue, ALLEGRO_TIMER * timer, ALLEGRO_DISPLA
    enum {up, right, down, left} direction = right;
 
    bool redraw = false;
+   bool canPress = false;
 
    al_start_timer(timer);
    while(1) {
@@ -103,6 +104,7 @@ void mainLoop(ALLEGRO_EVENT_QUEUE * queue, ALLEGRO_TIMER * timer, ALLEGRO_DISPLA
          // Game logic
          case ALLEGRO_EVENT_TIMER:
             redraw = true;
+            canPress = true;
 
             // printf("[%d, %d]\n", headPos.x, headPos.y);
 
@@ -150,16 +152,20 @@ void mainLoop(ALLEGRO_EVENT_QUEUE * queue, ALLEGRO_TIMER * timer, ALLEGRO_DISPLA
          case ALLEGRO_EVENT_KEY_DOWN:
             switch (event.keyboard.keycode) {
                case ALLEGRO_KEY_UP:
-                  direction = direction == down ? down : up;
+                  direction = direction != down && canPress ? up : down;
+                  canPress = false;
                   break;
                case ALLEGRO_KEY_DOWN:
-                  direction = direction == up ? up : down;
+                  direction = direction != up && canPress ? down : up;
+                  canPress = false;
                   break;
                case ALLEGRO_KEY_LEFT:
-                  direction = direction == right ? right : left;
+                  direction = direction != right && canPress ? left : right;
+                  canPress = false;
                   break;
                case ALLEGRO_KEY_RIGHT:
-                  direction = direction == left ? left : right;
+                  direction = direction != left && canPress ? right : left;
+                  canPress = false;
                   break;
                // Exit on esc pressed
                case ALLEGRO_KEY_ESCAPE:
