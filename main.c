@@ -69,12 +69,12 @@ int main() {
    al_register_event_source(queue, al_get_timer_event_source(timer));
    al_register_event_source(queue, al_get_display_event_source(display));
 
-   scaleFactorX = al_get_display_width(display) / (float) SCALED_WIDTH;
-   scaleFactorY = al_get_display_height(display) / (float) SCALED_HEIGHT;
+   scaleFactorX = WIN_WIDTH / (float) SCALED_WIDTH;
+   scaleFactorY = WIN_HEIGHT / (float) SCALED_HEIGHT;
 
    // Position of the snake tail
-   headPos.x = ((al_get_display_width(display) / scaleFactorX) / 4) * scaleFactorX;
-   headPos.y = ((al_get_display_width(display) / scaleFactorY) / 2) * scaleFactorY;
+   headPos.x = ((int) (WIN_WIDTH / scaleFactorX) / 4) * scaleFactorX;
+   headPos.y = ((int) (WIN_HEIGHT / scaleFactorY) / 4) * scaleFactorY;
 
    // Create a snake with 3 segments to start the game
    for (int i = 0; i < 3; i++) {
@@ -238,8 +238,8 @@ node_t * reset(node_t * head) {
    deleteSnake(head);
 
    node_t * newhead = NULL;
-   headPos.x = ((WIN_WIDTH / scaleFactorX) / 4) * scaleFactorX;
-   headPos.y = ((WIN_HEIGHT / scaleFactorY) / 2) * scaleFactorY;
+   headPos.x = ((int) (WIN_WIDTH / scaleFactorX) / 4) * scaleFactorX;
+   headPos.y = ((int) (WIN_HEIGHT / scaleFactorY) / 2) * scaleFactorY;
 
    for (int i = 0; i < 3; i++) {
       newhead = createHead(newhead, headPos);
