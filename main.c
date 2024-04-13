@@ -1,276 +1,205 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <allegro5/allegro5.h>
-#include <allegro5/color.h>
-#include <allegro5/timer.h>
-#include <allegro5/events.h>
-#include <allegro5/allegro_primitives.h>
+
+#include <raylib.h>
+
 #include "snake.h"
 
 // Window size
-#define WIN_WIDTH 480
-#define WIN_HEIGHT 480
+static const int winWidth = 480;
+static const int winHeight = 480;
 
 // Grid size
-#define SCALED_WIDTH 32
-#define SCALED_HEIGHT 32
+static const int scaledWidth = 32;
+static const int scaledHeight = 32;
 
-float scaleFactorX;
-float scaleFactorY;
+static Vector2 pixelSize;
 
-void mainLoop(ALLEGRO_EVENT_QUEUE * queue, ALLEGRO_TIMER * timer);
-void drawNode(node_t * node);
-node_t * reset(node_t * head);
-int genRandom(int max);
-void spawnApple(struct point * appleLocation);
+static Vector2 headPos;
+static node_t * head;
+static enum {up, right, down, left} direction = right;
+static bool canPress = true;
+static int tickCount = 0;
 
-struct point headPos;
-node_t * head = NULL;
-struct point applePos;
+static Vector2 applePos;
 
-int main() {
-   // Initializing allegro and its components
-   if (!al_init()) {
-      printf("Failed to init allegro.\n");
-      return EXIT_FAILURE;
+static void InitGame(void);
+static void UpdateGame(void);
+static void DrawGame(void);
+static void DrawNode(node_t * head);
+static void SpawnApple(void);
+
+int main()
+{
+   // Create game window
+   InitWindow(winWidth, winHeight, "Snake");
+
+   pixelSize = (Vector2) { winWidth / scaledWidth, winHeight / scaledHeight };
+
+   // Initialize snake position and spawn first apple
+   InitGame();
+
+   SetTargetFPS(60);
+
+   while (!WindowShouldClose())
+   {
+      UpdateGame();
+      DrawGame();
    }
 
-   if (!al_init_primitives_addon()) {
-      printf("Failed to init primitives addon.\n");
-   }
-
-   if (!al_install_keyboard()) {
-      printf("Failed to init keyboard.\n");
-      return EXIT_FAILURE;
-   }
-
-   // Around 15 fps
-   ALLEGRO_TIMER * timer = al_create_timer(1.0 / 15.0);
-   if (!timer) {
-      printf("Failed to create timer.\n");
-      return EXIT_FAILURE;
-   }
-
-   ALLEGRO_EVENT_QUEUE * queue = al_create_event_queue();
-   if (!queue) {
-      printf("Failed to create event queue.\n");
-      return EXIT_FAILURE;
-   }
-
-   ALLEGRO_DISPLAY * display = al_create_display(WIN_WIDTH, WIN_HEIGHT);
-   if (!display) {
-      printf("Failed to create display.\n");
-      return EXIT_FAILURE;
-   }
-
-   // Registering events in event queue
-   al_register_event_source(queue, al_get_keyboard_event_source());
-   al_register_event_source(queue, al_get_timer_event_source(timer));
-   al_register_event_source(queue, al_get_display_event_source(display));
-
-   scaleFactorX = WIN_WIDTH / (float) SCALED_WIDTH;
-   scaleFactorY = WIN_HEIGHT / (float) SCALED_HEIGHT;
-
-   // Position of the snake tail
-   headPos.x = ((int) (WIN_WIDTH / scaleFactorX) / 4) * scaleFactorX;
-   headPos.y = ((int) (WIN_HEIGHT / scaleFactorY) / 4) * scaleFactorY;
-
-   // Create a snake with 3 segments to start the game
-   for (int i = 0; i < 3; i++) {
-      head = createHead(head, headPos);
-      headPos.x = headPos.x + scaleFactorX;
-   }
-
-   // Spawn first apple
-   spawnApple(&applePos);
-
-   mainLoop(queue, timer);
-
-   // Free resources before exiting
    deleteSnake(head);
-   al_destroy_timer(timer);
-   al_destroy_display(display);
-   al_destroy_event_queue(queue);
 
    return 0;
 }
 
-void mainLoop(ALLEGRO_EVENT_QUEUE * queue, ALLEGRO_TIMER * timer) {
-   ALLEGRO_EVENT event;
+void InitGame()
+{
+   direction = right;
+   // Set the snake head position to be on the middle of the grid
+   headPos.x = ((int) (winWidth / pixelSize.x) / 2) * pixelSize.x;
+   headPos.y = ((int) (winHeight / pixelSize.y) / 2) * pixelSize.y;
 
-   enum {up, right, down, left} direction = right;
+   head = NULL;
 
-   bool redraw = false;
-   bool canPress = false;
-
-   al_start_timer(timer);
-   while(1) {
-      al_wait_for_event(queue, &event);
-      switch (event.type) {
-         // Game logic
-         case ALLEGRO_EVENT_TIMER:
-            redraw = true;
-            canPress = true;
-
-            switch (direction) {
-               case up:
-                  headPos.y -= scaleFactorY;
-                  break;
-               case down:
-                  headPos.y += scaleFactorY;
-                  break;
-               case left:
-                  headPos.x -= scaleFactorX;
-                  break;
-               case right:
-                  headPos.x += scaleFactorX;
-                  break;
-            }
-
-            if (isColliding(head->next, head->p) // Check if the head has hit any part of the body
-                  || headPos.x < scaleFactorX // Check if the head has hit the left wall
-                  || headPos.x >= WIN_WIDTH - scaleFactorX // Check if the head has hit the right wall
-                  || headPos.y < scaleFactorY // Check if the head has hit the top wall
-                  || headPos.y >= WIN_HEIGHT - scaleFactorY) { // Check if the head has hit the bottom wall
-               printf("Colidiu\n");
-               direction = right;
-               head = reset(head);
-
-               // Spawn apple until it is not inside the snake
-               do {
-                  spawnApple(&applePos);
-               } while (isColliding(head, applePos));
-            }
-
-            // If the snake has eaten the apple, spawn a new one and skip deleting the tail
-            if (head->p.x == applePos.x && head->p.y == applePos.y) {
-               do {
-                  spawnApple(&applePos);
-               } while (isColliding(head, applePos));
-            // If the snake has not eaten a apple, delete the tail
-            } else {
-               deleteTail(head);
-            }
-
-            head = createHead(head, headPos);
-
-            break;
-         // User input
-         case ALLEGRO_EVENT_KEY_DOWN:
-            switch (event.keyboard.keycode) {
-               case ALLEGRO_KEY_UP:
-                  direction = direction != down && canPress ? up : down;
-                  canPress = false;
-                  break;
-               case ALLEGRO_KEY_DOWN:
-                  direction = direction != up && canPress ? down : up;
-                  canPress = false;
-                  break;
-               case ALLEGRO_KEY_LEFT:
-                  direction = direction != right && canPress ? left : right;
-                  canPress = false;
-                  break;
-               case ALLEGRO_KEY_RIGHT:
-                  direction = direction != left && canPress ? right : left;
-                  canPress = false;
-                  break;
-               // Exit on esc pressed
-               case ALLEGRO_KEY_ESCAPE:
-                  return;
-                  break;
-            }
-            break;
-         // Window close signal
-         case ALLEGRO_EVENT_DISPLAY_CLOSE:
-            return;
-            break;
-         // Case unknown event, just ignore
-         default:
-            break;
-      }
-
-      // Drawing to the screen
-      if (redraw && al_is_event_queue_empty(queue)) {
-         al_clear_to_color(al_map_rgb(0, 0, 0));
-
-         // Draw the walls
-         //    Horizontally
-         for (int i = 0; i <= WIN_WIDTH - scaleFactorX; i += scaleFactorX) {
-            // Top row
-            al_draw_filled_rectangle(i, 0, i + scaleFactorX, scaleFactorY, al_map_rgb(255, 255, 255));
-            al_draw_rectangle(i, 0, i + scaleFactorX, scaleFactorY, al_map_rgb(0, 0, 0), 1);
-
-            // Bottom row
-            al_draw_filled_rectangle(i, WIN_HEIGHT - scaleFactorY, i + scaleFactorX, WIN_HEIGHT, al_map_rgb(255, 255, 255));
-            al_draw_rectangle(i, WIN_HEIGHT - scaleFactorY, i + scaleFactorX, WIN_HEIGHT, al_map_rgb(0, 0, 0), 1);
-         }
-         //    Vertically
-         for (int i = scaleFactorY; i <= WIN_HEIGHT - scaleFactorY * 2; i += scaleFactorY) {
-            // Left row
-            al_draw_filled_rectangle(0, i, scaleFactorX, i + scaleFactorY, al_map_rgb(255, 255, 255));
-            al_draw_rectangle(0, i, scaleFactorX, i + scaleFactorY, al_map_rgb(0, 0, 0), 1);
-
-            // Right row
-            al_draw_filled_rectangle(WIN_WIDTH - scaleFactorX, i, WIN_WIDTH, i + scaleFactorY, al_map_rgb(255, 255, 255));
-            al_draw_rectangle(WIN_WIDTH - scaleFactorX, i, WIN_WIDTH, i + scaleFactorY, al_map_rgb(0, 0, 0), 1);
-         }
-
-         // Draw the apple
-         al_draw_filled_rectangle(applePos.x, applePos.y, applePos.x + scaleFactorX, applePos.y + scaleFactorY, al_map_rgb(255, 0, 0));
-         al_draw_rectangle(applePos.x, applePos.y, applePos.x + scaleFactorX, applePos.y + scaleFactorY, al_map_rgb(0, 0, 0), 1);
-
-         // Draw the snake
-         forEach(head, *drawNode);
-
-         al_flip_display();
-         redraw = false;
-      }
-   }
-}
-
-void drawNode(node_t * node) {
-   al_draw_filled_rectangle(node->p.x, node->p.y, node->p.x + scaleFactorX, node->p.y + scaleFactorY, al_map_rgb(0, 255, 0));
-   al_draw_rectangle(node->p.x, node->p.y, node->p.x + scaleFactorX, node->p.y + scaleFactorY, al_map_rgb(0, 0, 0), 1);
-}
-
-node_t * reset(node_t * head) {
-   deleteSnake(head);
-
-   node_t * newhead = NULL;
-   headPos.x = ((int) (WIN_WIDTH / scaleFactorX) / 4) * scaleFactorX;
-   headPos.y = ((int) (WIN_HEIGHT / scaleFactorY) / 2) * scaleFactorY;
-
+   // Create a snake with 3 segments to start the game
    for (int i = 0; i < 3; i++) {
-      newhead = createHead(newhead, headPos);
-      headPos.x = headPos.x + scaleFactorX;
+      head = createHead(head, headPos);
+      headPos.x = headPos.x + pixelSize.x;
    }
 
-   return newhead;
+   SpawnApple();
 }
 
-int genRandom(int max) {
-   int divisor = RAND_MAX/(max+1);
-   int val;
+void UpdateGame()
+{
+   tickCount++;
 
-   do {
-      val = rand() / divisor;
-   } while (val > max);
+   // Input handling
+   if (IsKeyPressed(KEY_RIGHT) && canPress && direction != left)
+   {
+      direction = right;
+      canPress = false;
+   }
+   if (IsKeyPressed(KEY_LEFT) && canPress && direction != right)
+   {
+      direction = left;
+      canPress = false;
+   }
+   if (IsKeyPressed(KEY_UP) && canPress && direction != down)
+   {
+      direction = up;
+      canPress = false;
+   }
+   if (IsKeyPressed(KEY_DOWN) && canPress && direction != up)
+   {
+      direction = down;
+      canPress = false;
+   }
 
-   return val;
+   // Update snake position
+   if (tickCount >= 5)
+   {
+      tickCount = 0;
+
+      switch (direction)
+      {
+         case up:
+            headPos.y -= pixelSize.y;
+            break;
+         case down:
+            headPos.y += pixelSize.y;
+            break;
+         case left:
+            headPos.x -= pixelSize.x;
+            break;
+         case right:
+            headPos.x += pixelSize.x;
+            break;
+      }
+
+      // Check if snake has eaten apple
+      if (head->position.x == applePos.x && head->position.y == applePos.y)
+      {
+         do
+         {
+            SpawnApple();
+         }
+         while (isColliding(head, applePos));
+      }
+      // If the snake has not eaten a apple, delete the tail
+      else
+      {
+         deleteTail(head);
+      }
+
+      head = createHead(head, headPos);
+
+      canPress = true;
+   }
+
+   // Collision check
+   if (isColliding(head->next, head->position)
+         ||headPos.x < pixelSize.x
+         || headPos.y < pixelSize.y
+         || headPos.x >= winWidth - pixelSize.x
+         || headPos.y >= winHeight - pixelSize.y)
+   {
+      deleteSnake(head);
+      InitGame();
+   }
 }
 
-void spawnApple(struct point * appleLocation) {
-   int maxX = WIN_WIDTH / scaleFactorX - 2;
-   int maxY = WIN_HEIGHT / scaleFactorY - 2;
+void DrawGame()
+{
+   BeginDrawing();
 
-   appleLocation->x = genRandom(maxX) * scaleFactorX;
-   appleLocation->y = genRandom(maxY) * scaleFactorY;
+      ClearBackground(BLACK);
 
-   if (appleLocation->x < scaleFactorX) {
-      appleLocation->x = scaleFactorX;
-   }
-   if (appleLocation->y < scaleFactorY) {
-      appleLocation->y = scaleFactorY;
-   }
+      // Drawl walls
+      for (int i = 0; i <= winWidth - pixelSize.x; i += pixelSize.x)
+      {
+         // Top row
+         DrawRectangle(i, 0, pixelSize.x, pixelSize.y, RAYWHITE);
+         DrawRectangleLines(i, 0, pixelSize.x, pixelSize.y, BLACK);
+
+         // Bottom row
+         DrawRectangle(i, winHeight - pixelSize.y, pixelSize.x, pixelSize.y, RAYWHITE);
+         DrawRectangleLines(i, winHeight - pixelSize.y, pixelSize.x, pixelSize.y, BLACK);
+      }
+      for (int i = pixelSize.y; i <= winHeight - pixelSize.y * 2; i += pixelSize.y)
+      {
+         // Left row
+         DrawRectangle(0, i, pixelSize.x, pixelSize.y, RAYWHITE);
+         DrawRectangleLines(0, i, pixelSize.x, pixelSize.y, BLACK);
+
+         // Right row
+         DrawRectangle(winWidth - pixelSize.x, i, pixelSize.x, pixelSize.y, WHITE);
+         DrawRectangleLines(winWidth - pixelSize.x, i, pixelSize.x, pixelSize.y, BLACK);
+      }
+
+      // Draw the apple
+      DrawRectangleV(applePos, pixelSize, RED);
+      DrawRectangleLines(applePos.x, applePos.y, pixelSize.x, pixelSize.y, BLACK);
+
+      // Draw the snake
+      forEach(head, &DrawNode);
+
+   EndDrawing();
+}
+
+static void DrawNode(node_t * node)
+{
+   DrawRectangleV(node->position, pixelSize, GREEN);
+   DrawRectangleLines(node->position.x, node->position.y, pixelSize.x, pixelSize.y, BLACK);
+}
+
+void SpawnApple()
+{
+   // Prevents apple from spawning outside screen or inside the bottom and right walls
+   int maxX = winWidth / pixelSize.x - 2;
+   int maxY = winHeight / pixelSize.y - 2;
+
+   applePos.x = GetRandomValue(1, maxX) * pixelSize.x;
+   applePos.y = GetRandomValue(1, maxY) * pixelSize.y;
 }

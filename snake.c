@@ -1,11 +1,11 @@
 #include "snake.h"
 
-node_t * createHead(node_t * next, struct point p) {
+node_t * createHead(node_t * next, Vector2 position) {
    node_t * head = (node_t *) malloc(sizeof(node_t));
 
    // Make it point to the next node
    head->next = next;
-   head->p = p;
+   head->position = position;
 
    return head;
 }
@@ -44,11 +44,11 @@ void forEach(node_t * head, void (*callback)(node_t * node)) {
    }
 }
 
-int isColliding(node_t * head, struct point p) {
+int isColliding(node_t * head, Vector2 position) {
    node_t * current = head;
 
    while (current != NULL) {
-      if (current->p.x == p.x && current->p.y == p.y) {
+      if (current->position.x == position.x && current->position.y == position.y) {
          return 1;
       }
       current = current->next;

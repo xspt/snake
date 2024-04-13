@@ -1,5 +1,5 @@
 main: main.o snake.o
-	gcc -o main main.o snake.o `pkg-config --libs --cflags allegro-5 allegro_primitives-5`
+	gcc -o main main.o snake.o -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
 
 main.o: main.c
 	gcc -c main.c
