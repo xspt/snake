@@ -1,5 +1,5 @@
 # snake
 
-Simple snake game made with the C programming language and the [allegro](https://github.com/liballeg/allegro5) lib
+Simple snake game made with the C programming language and the [raylib](https://github.com/raysan5/raylib) lib
 
 ![snake gif](snake.gif)
