@@ -24,8 +24,13 @@ static int tickCount = 0;
 
 static Vector2 applePos;
 
+static bool shouldQuit = false;
 static bool pause = false;
 static enum { menu, game, gameover } screen = menu;
+static const char * options[] = { "start", "options", "quit" };
+static const char * gameoverOptions[] = { "restart", "main menu" };
+static int menuSelected = 0;
+static int gameoverSelected = 0;
 
 static void InitGame(void);
 static void UpdateGame(void);
@@ -40,25 +45,23 @@ int main()
 
    pixelSize = (Vector2) { winWidth / scaledWidth, winHeight / scaledHeight };
 
-   // Initialize snake position and spawn first apple
-   InitGame();
+   SetExitKey(KEY_NULL);
 
    SetTargetFPS(60);
 
-   while (!WindowShouldClose())
+   while (!shouldQuit)
    {
       UpdateGame();
       DrawGame();
    }
 
-   deleteSnake(head);
+   CloseWindow();
 
    return 0;
 }
 
 void InitGame()
 {
-   screen = game;
    direction = right;
    // Set the snake head position to be on the middle of the grid
    headPos.x = ((int) (winWidth / pixelSize.x) / 2) * pixelSize.x;
@@ -77,13 +80,37 @@ void InitGame()
 
 void UpdateGame()
 {
+   shouldQuit = WindowShouldClose();
    switch (screen)
    {
       case menu:
+         if (IsKeyPressed(KEY_DOWN) && menuSelected < 2)
+         {
+            menuSelected++;
+         }
+         if (IsKeyPressed(KEY_UP) && menuSelected > 0)
+         {
+            menuSelected--;
+         }
+         if (IsKeyPressed(KEY_ENTER))
+         {
+            switch (menuSelected)
+            {
+               case 0:
+                  screen = game;
+                  InitGame();
+                  break;
+               case 1:
+                  break;
+               case 2:
+                  shouldQuit = true;
+                  break;
+            }
+         }
          break;
 
       case game:
-         if (IsKeyPressed(KEY_P))
+         if (IsKeyPressed(KEY_ESCAPE))
          {
             pause = !pause;
          }
@@ -163,12 +190,36 @@ void UpdateGame()
                   || headPos.y >= winHeight - pixelSize.y)
             {
                deleteSnake(head);
-               InitGame();
+               screen = gameover;
+               gameoverSelected = 0;
             }
          }
          break;
 
       case gameover:
+         if (IsKeyPressed(KEY_DOWN) && gameoverSelected < 1)
+         {
+            gameoverSelected++;
+         }
+         if (IsKeyPressed(KEY_UP) && gameoverSelected > 0)
+         {
+            gameoverSelected--;
+         }
+         if (IsKeyPressed(KEY_ENTER))
+         {
+            switch (gameoverSelected)
+            {
+               case 0:
+                  screen = game;
+                  InitGame();
+                  break;
+
+               case 1:
+                  screen = menu;
+                  menuSelected = 0;
+                  break;
+            }
+         }
          break;
    }
 
@@ -181,6 +232,29 @@ void DrawGame()
       switch (screen)
       {
          case menu:
+            ClearBackground(BLACK);
+
+            Color textColor;
+            int posY;
+
+            for (int i = 0; i < 3; i++)
+            {
+               textColor = menuSelected == i ? WHITE : GRAY;
+               switch (i)
+               {
+                  case 0:
+                     posY = GetScreenHeight() / 2 - 80;
+                     break;
+
+                  case 1:
+                     posY = GetScreenHeight() / 2 - 40;
+                     break;
+                  case 2:
+                     posY = GetScreenHeight() / 2;
+                     break;
+               }
+               DrawText(options[i], winWidth / 2 - MeasureText(options[i], 40) / 2, posY, 40, textColor);
+            }
             break;
 
          case game:
@@ -222,6 +296,16 @@ void DrawGame()
             break;
 
          case gameover:
+            ClearBackground(BLACK);
+
+            DrawText("GAME OVER", GetScreenWidth() / 2 - MeasureText("GAME OVER", 30) / 2, GetScreenHeight() / 2 - 30, 30, WHITE);
+
+            textColor = GRAY;
+            for (int i = 0; i < 2; i++)
+            {
+               textColor = gameoverSelected == i ? WHITE : GRAY;
+               DrawText(gameoverOptions[i], GetScreenWidth() / 2 - MeasureText(gameoverOptions[i], 30) / 2, GetScreenHeight() / 2 + i * 30, 30, textColor);
+            }
             break;
       }
 
