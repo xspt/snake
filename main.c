@@ -7,14 +7,15 @@
 #include "snake.h"
 
 // Window size
-static const int winWidth = 480;
+static const int winWidth = 640;
 static const int winHeight = 480;
 
 // Grid size
-static const int scaledWidth = 32;
-static const int scaledHeight = 32;
+static const int gridWidth = 22;
+static const int gridHeight = 22;
 
 static Vector2 pixelSize;
+static Vector2 offset;
 
 static Vector2 headPos;
 static node_t * head;
@@ -43,7 +44,16 @@ int main()
    // Create game window
    InitWindow(winWidth, winHeight, "Snake");
 
-   pixelSize = (Vector2) { winWidth / scaledWidth, winHeight / scaledHeight };
+   if (winHeight < winWidth)
+   {
+      offset = (Vector2) { (winWidth - (winHeight - winHeight % gridHeight)) / 2.0, (winHeight % gridHeight) / 2.0};
+      pixelSize = (Vector2) { (winHeight - offset.y * 2) / gridHeight, (winHeight - offset.y * 2) / gridHeight };
+   }
+   else
+   {
+      offset = (Vector2) { (winWidth % gridWidth) / 2.0, (winHeight - (winWidth - winWidth % gridWidth)) / 2.0 };
+      pixelSize = (Vector2) { (winWidth - offset.x * 2) / gridWidth, (winWidth - offset.x * 2) / gridWidth };
+   }
 
    SetExitKey(KEY_NULL);
 
@@ -64,8 +74,8 @@ void InitGame()
 {
    direction = right;
    // Set the snake head position to be on the middle of the grid
-   headPos.x = ((int) (winWidth / pixelSize.x) / 2) * pixelSize.x;
-   headPos.y = ((int) (winHeight / pixelSize.y) / 2) * pixelSize.y;
+   headPos.x = gridWidth / 2.0 * pixelSize.x + offset.x;
+   headPos.y = gridHeight / 2.0 * pixelSize.y + offset.y;
 
    head = NULL;
 
@@ -184,10 +194,10 @@ void UpdateGame()
 
             // Collision check
             if (isColliding(head->next, head->position)
-                  ||headPos.x < pixelSize.x
-                  || headPos.y < pixelSize.y
-                  || headPos.x >= winWidth - pixelSize.x
-                  || headPos.y >= winHeight - pixelSize.y)
+                  || headPos.x < pixelSize.x + offset.x
+                  || headPos.y < pixelSize.y + offset.y
+                  || headPos.x >= winWidth - (pixelSize.x + offset.x)
+                  || headPos.y >= winHeight - (pixelSize.y + offset.y))
             {
                deleteSnake(head);
                screen = gameover;
@@ -261,25 +271,26 @@ void DrawGame()
             ClearBackground(BLACK);
 
             // Drawl walls
-            for (int i = 0; i <= winWidth - pixelSize.x; i += pixelSize.x)
+            for (int i = offset.x; i <= winWidth - (pixelSize.x + offset.x); i += pixelSize.x)
             {
                // Top row
-               DrawRectangle(i, 0, pixelSize.x, pixelSize.y, RAYWHITE);
-               DrawRectangleLines(i, 0, pixelSize.x, pixelSize.y, BLACK);
+               DrawRectangle(i, offset.y, pixelSize.x, pixelSize.y, RAYWHITE);
+               DrawRectangleLines(i, offset.y, pixelSize.x, pixelSize.y, BLACK);
 
                // Bottom row
-               DrawRectangle(i, winHeight - pixelSize.y, pixelSize.x, pixelSize.y, RAYWHITE);
-               DrawRectangleLines(i, winHeight - pixelSize.y, pixelSize.x, pixelSize.y, BLACK);
+               DrawRectangle(i, winHeight - (pixelSize.y + offset.y), pixelSize.x, pixelSize.y, RAYWHITE);
+               DrawRectangleLines(i, winHeight - (pixelSize.y + offset.y), pixelSize.x, pixelSize.y, BLACK);
             }
-            for (int i = pixelSize.y; i <= winHeight - pixelSize.y * 2; i += pixelSize.y)
+
+            for (int i = pixelSize.y + offset.y; i <= winHeight - (pixelSize.y * 2 + offset.y); i += pixelSize.y)
             {
                // Left row
-               DrawRectangle(0, i, pixelSize.x, pixelSize.y, RAYWHITE);
-               DrawRectangleLines(0, i, pixelSize.x, pixelSize.y, BLACK);
+               DrawRectangle(offset.x, i, pixelSize.x, pixelSize.y, RAYWHITE);
+               DrawRectangleLines(offset.x, i, pixelSize.x, pixelSize.y, BLACK);
 
                // Right row
-               DrawRectangle(winWidth - pixelSize.x, i, pixelSize.x, pixelSize.y, WHITE);
-               DrawRectangleLines(winWidth - pixelSize.x, i, pixelSize.x, pixelSize.y, BLACK);
+               DrawRectangle(winWidth - (pixelSize.x + offset.x), i, pixelSize.x, pixelSize.y, WHITE);
+               DrawRectangleLines(winWidth - (pixelSize.x + offset.x), i, pixelSize.x, pixelSize.y, BLACK);
             }
 
             // Draw the apple
@@ -322,9 +333,9 @@ static void DrawNode(node_t * node)
 void SpawnApple()
 {
    // Prevents apple from spawning outside screen or inside the bottom and right walls
-   int maxX = winWidth / pixelSize.x - 2;
-   int maxY = winHeight / pixelSize.y - 2;
+   int maxX = gridWidth - 2;
+   int maxY = gridHeight - 2;
 
-   applePos.x = GetRandomValue(1, maxX) * pixelSize.x;
-   applePos.y = GetRandomValue(1, maxY) * pixelSize.y;
+   applePos.x = GetRandomValue(1, maxX) * pixelSize.x + offset.x;
+   applePos.y = GetRandomValue(1, maxY) * pixelSize.y + offset.y;
 }
