@@ -4,7 +4,8 @@
 #include <raylib.h>
 
 // Our snake will be represented by a linked list
-typedef struct node {
+typedef struct node
+{
    Vector2 position;
    struct node * next;
 } node_t;
