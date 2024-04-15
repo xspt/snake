@@ -10,7 +10,6 @@
 static int winWidth = 640;
 static int winHeight = 480;
 static int resolutions[5][2] = { { 640, 480 }, { 800, 600 }, { 1024, 768 }, { 1280, 720 }, { 1366, 768 } };
-static char * resolutionsText[5] = { "640x480", "800x600", "1024x768", "1280x720", "1366x768" };
 static int selectedResolution = 0;
 
 // Grid size
@@ -31,7 +30,7 @@ static Vector2 applePos;
 static bool shouldQuit = false;
 static bool pause = false;
 static enum { menu, game, gameover } screen = menu;
-static const char * options[] = { "start", "resolution", "quit" };
+static const char * options[] = { "start", "640x480", "quit" };
 static const char * gameoverOptions[] = { "restart", "main menu" };
 static int menuSelected = 0;
 static int gameoverSelected = 0;
@@ -123,6 +122,7 @@ void UpdateGame()
                   break;
                case 1:
                   selectedResolution = selectedResolution < 4 ? selectedResolution + 1 : 0;
+                  options[1] = TextFormat("%dx%d", resolutions[selectedResolution][0], resolutions[selectedResolution][1]);
                   winWidth = resolutions[selectedResolution][0];
                   winHeight = resolutions[selectedResolution][1];
                   SetWindowSize(winWidth, winHeight);
@@ -289,7 +289,6 @@ void DrawGame()
                      posY = GetScreenHeight() / 2 - 80;
                      break;
                   case 1:
-                     options[i] = resolutionsText[selectedResolution];
                      posY = GetScreenHeight() / 2 - 40;
                      break;
                   case 2:
