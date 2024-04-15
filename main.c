@@ -59,6 +59,7 @@ int main()
       DrawGame();
    }
 
+   deleteSnake(head);
    CloseWindow();
 
    return 0;
@@ -214,6 +215,7 @@ void UpdateGame()
                   || headPos.y >= winHeight - (pixelSize.y + offset.y))
             {
                deleteSnake(head);
+               head = NULL;
                screen = gameover;
                gameoverSelected = 0;
             }
