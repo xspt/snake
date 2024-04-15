@@ -10,6 +10,7 @@
 static int winWidth = 640;
 static int winHeight = 480;
 static int resolutions[5][2] = { { 640, 480 }, { 800, 600 }, { 1024, 768 }, { 1280, 720 }, { 1366, 768 } };
+static char * resolutionsText[5] = { "640x480", "800x600", "1024x768", "1280x720", "1366x768" };
 static int selectedResolution = 0;
 
 // Grid size
@@ -131,6 +132,22 @@ void UpdateGame()
                   shouldQuit = true;
                   break;
             }
+         }
+         if (menuSelected == 1 && IsKeyPressed(KEY_LEFT) && selectedResolution > 0)
+         {
+            selectedResolution--;
+            winWidth = resolutions[selectedResolution][0];
+            winHeight = resolutions[selectedResolution][1];
+            SetWindowSize(winWidth, winHeight);
+            updateResolution();
+         }
+         if (menuSelected == 1 && IsKeyPressed(KEY_RIGHT) && selectedResolution < 4)
+         {
+            selectedResolution++;
+            winWidth = resolutions[selectedResolution][0];
+            winHeight = resolutions[selectedResolution][1];
+            SetWindowSize(winWidth, winHeight);
+            updateResolution();
          }
          break;
 
@@ -271,8 +288,8 @@ void DrawGame()
                   case 0:
                      posY = GetScreenHeight() / 2 - 80;
                      break;
-
                   case 1:
+                     options[i] = resolutionsText[selectedResolution];
                      posY = GetScreenHeight() / 2 - 40;
                      break;
                   case 2:
