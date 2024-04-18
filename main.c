@@ -6,36 +6,50 @@
 
 #include "snake.h"
 
-// Window size
-static int winWidth = 640;
-static int winHeight = 480;
-static int resolutions[5][2] = { { 640, 480 }, { 800, 600 }, { 1024, 768 }, { 1280, 720 }, { 1366, 768 } };
-static int selectedResolution = 0;
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-// Grid size
-static const int gridWidth = 22;
-static const int gridHeight = 22;
+// Window
+static const int gameWidth = 660;
+static const int gameHeight = 660;
 
-static Vector2 pixelSize;
-static Vector2 offset;
+static int resolutions[][2] = { { 640, 480 }, { 800, 600 }, { 1024, 768 }, { 1280, 720 } };
 
+static const int gridSize = 22;
+static float gridScale;
+
+static int scoreMargin = 60;
+
+static RenderTexture2D target;
+static float targetScale;
+static RenderTexture2D menuRender;
+static float menuScale;
+
+// Snake
 static Vector2 headPos;
 static node_t * head;
+
+// Snake movement
+static int tickCount = 0;
 static enum { up, right, down, left } direction = right;
 static bool canPress = true;
-static int tickCount = 0;
 
+// Apple
 static Vector2 applePos;
+static int appleCount = 0;
+static int appleBest = 0;
 
+// Game state
 static bool shouldQuit = false;
 static bool pause = false;
 static enum { menu, game, gameover } screen = menu;
-static const char * options[] = { "start", "640x480", "quit" };
-static const char * gameoverOptions[] = { "restart", "main menu" };
+static const char * options[] = { "JOGAR", "800x600", "SAIR" };
+static const char * gameoverOptions[] = { "TENTAR DE NOVO", "MENU PRINCIPAL" };
+static int resolutionSelected = 1;
 static int menuSelected = 0;
 static int gameoverSelected = 0;
 
-static void updateResolution(void);
+// Function declaration
 static void InitGame(void);
 static void UpdateGame(void);
 static void DrawGame(void);
@@ -44,10 +58,14 @@ static void SpawnApple(void);
 
 int main()
 {
-   // Create game window
-   InitWindow(winWidth, winHeight, "Snake");
+   InitWindow(resolutions[resolutionSelected][0], resolutions[resolutionSelected][1], "Snake");
 
-   updateResolution();
+   gridScale = gameWidth / (float) gridSize;
+
+   target = LoadRenderTexture(gameWidth, gameHeight + scoreMargin);
+   menuRender = LoadRenderTexture(gameWidth, gameHeight);
+   SetTextureFilter(target.texture, TEXTURE_FILTER_BILINEAR);
+   SetTextureFilter(menuRender.texture, TEXTURE_FILTER_BILINEAR);
 
    SetExitKey(KEY_NULL);
 
@@ -60,39 +78,23 @@ int main()
    }
 
    deleteSnake(head);
+   UnloadRenderTexture(menuRender);
+   UnloadRenderTexture(target);
    CloseWindow();
 
    return 0;
 }
 
-
-static void updateResolution(void)
-{
-   if (winHeight < winWidth)
-   {
-      offset = (Vector2) { (winWidth - (winHeight - winHeight % gridHeight)) / 2.0, (winHeight % gridHeight) / 2.0};
-      pixelSize = (Vector2) { (winHeight - offset.y * 2) / gridHeight, (winHeight - offset.y * 2) / gridHeight };
-   }
-   else
-   {
-      offset = (Vector2) { (winWidth % gridWidth) / 2.0, (winHeight - (winWidth - winWidth % gridWidth)) / 2.0 };
-      pixelSize = (Vector2) { (winWidth - offset.x * 2) / gridWidth, (winWidth - offset.x * 2) / gridWidth };
-   }
-}
-
 void InitGame()
 {
    direction = right;
-   // Set the snake head position to be on the middle of the grid
-   headPos.x = gridWidth / 2.0 * pixelSize.x + offset.x;
-   headPos.y = gridHeight / 2.0 * pixelSize.y + offset.y;
+   headPos = (Vector2) { (float) gridSize / 2 * gridScale, (float) gridSize / 2 * gridScale + scoreMargin };
 
    head = NULL;
 
-   // Create a snake with 3 segments to start the game
    for (int i = 0; i < 3; i++) {
       head = createHead(head, headPos);
-      headPos.x = headPos.x + pixelSize.x;
+      headPos.x = headPos.x + gridScale;
    }
 
    SpawnApple();
@@ -101,6 +103,10 @@ void InitGame()
 void UpdateGame()
 {
    shouldQuit = WindowShouldClose();
+
+   targetScale = MIN((float) GetScreenWidth() / gameWidth, (float) GetScreenHeight() / (gameHeight + scoreMargin));
+   menuScale = MIN((float) GetScreenWidth() / gameWidth, (float) GetScreenHeight() / gameHeight);
+
    switch (screen)
    {
       case menu:
@@ -121,33 +127,23 @@ void UpdateGame()
                   InitGame();
                   break;
                case 1:
-                  selectedResolution = selectedResolution < 4 ? selectedResolution + 1 : 0;
-                  options[1] = TextFormat("%dx%d", resolutions[selectedResolution][0], resolutions[selectedResolution][1]);
-                  winWidth = resolutions[selectedResolution][0];
-                  winHeight = resolutions[selectedResolution][1];
-                  SetWindowSize(winWidth, winHeight);
-                  updateResolution();
+                  resolutionSelected = resolutionSelected < 3 ? resolutionSelected + 1 : 0;
+                  SetWindowSize(resolutions[resolutionSelected][0], resolutions[resolutionSelected][1]);
                   break;
                case 2:
                   shouldQuit = true;
                   break;
             }
          }
-         if (menuSelected == 1 && IsKeyPressed(KEY_LEFT) && selectedResolution > 0)
+         if (IsKeyPressed(KEY_LEFT) && menuSelected == 1 && resolutionSelected > 0)
          {
-            selectedResolution--;
-            winWidth = resolutions[selectedResolution][0];
-            winHeight = resolutions[selectedResolution][1];
-            SetWindowSize(winWidth, winHeight);
-            updateResolution();
+            resolutionSelected--;
+            SetWindowSize(resolutions[resolutionSelected][0], resolutions[resolutionSelected][1]);
          }
-         if (menuSelected == 1 && IsKeyPressed(KEY_RIGHT) && selectedResolution < 4)
+         if (IsKeyPressed(KEY_RIGHT) && menuSelected == 1 && resolutionSelected < 3)
          {
-            selectedResolution++;
-            winWidth = resolutions[selectedResolution][0];
-            winHeight = resolutions[selectedResolution][1];
-            SetWindowSize(winWidth, winHeight);
-            updateResolution();
+            resolutionSelected++;
+            SetWindowSize(resolutions[resolutionSelected][0], resolutions[resolutionSelected][1]);
          }
          break;
 
@@ -184,23 +180,23 @@ void UpdateGame()
             }
 
             // Update snake position
-            if (tickCount >= 5)
+            if (tickCount % 5 == 0)
             {
                tickCount = 0;
 
                switch (direction)
                {
                   case up:
-                     headPos.y -= pixelSize.y;
+                     headPos.y -= gridScale;
                      break;
                   case down:
-                     headPos.y += pixelSize.y;
+                     headPos.y += gridScale;
                      break;
                   case left:
-                     headPos.x -= pixelSize.x;
+                     headPos.x -= gridScale;
                      break;
                   case right:
-                     headPos.x += pixelSize.x;
+                     headPos.x += gridScale;
                      break;
                }
 
@@ -209,6 +205,8 @@ void UpdateGame()
                {
                   do
                   {
+                     appleCount++;
+                     appleBest = appleCount > appleBest ? appleCount : appleBest;
                      SpawnApple();
                   }
                   while (isColliding(head, applePos));
@@ -226,13 +224,14 @@ void UpdateGame()
 
             // Collision check
             if (isColliding(head->next, head->position)
-                  || headPos.x < pixelSize.x + offset.x
-                  || headPos.y < pixelSize.y + offset.y
-                  || headPos.x >= winWidth - (pixelSize.x + offset.x)
-                  || headPos.y >= winHeight - (pixelSize.y + offset.y))
+                  ||headPos.x < gridScale
+                  || headPos.y < gridScale + scoreMargin
+                  || headPos.x >= gameWidth - gridScale
+                  || headPos.y >= gameHeight + scoreMargin - gridScale)
             {
                deleteSnake(head);
                head = NULL;
+               appleCount = 0;
                screen = gameover;
                gameoverSelected = 0;
             }
@@ -270,104 +269,139 @@ void UpdateGame()
 
 void DrawGame()
 {
-   BeginDrawing();
 
       switch (screen)
       {
          case menu:
-            ClearBackground(BLACK);
+            BeginTextureMode(menuRender);
+               ClearBackground(BLACK);
 
-            Color textColor;
-            int posY;
+               Color textColor;
+               int posY;
 
-            for (int i = 0; i < 3; i++)
-            {
-               textColor = menuSelected == i ? WHITE : GRAY;
-               switch (i)
+               for (int i = 0; i < 3; i++)
                {
-                  case 0:
-                     posY = GetScreenHeight() / 2 - 80;
-                     break;
-                  case 1:
-                     posY = GetScreenHeight() / 2 - 40;
-                     break;
-                  case 2:
-                     posY = GetScreenHeight() / 2;
-                     break;
+                  textColor = menuSelected == i ? WHITE : GRAY;
+                  switch (i)
+                  {
+                     case 0:
+                        posY = gameHeight / 2 - 100;
+                        break;
+                     case 1:
+                        posY = gameHeight / 2 - 50;
+                        DrawText(TextFormat("%dx%d", resolutions[resolutionSelected][0], resolutions[resolutionSelected][1]), gameWidth / 2 - MeasureText(options[i], 50) / 2, posY, 50, textColor);
+                        break;
+                     case 2:
+                        posY = gameHeight / 2;
+                        break;
+                  }
+                  if (i != 1)
+                  {
+                     DrawText(options[i], gameWidth / 2 - MeasureText(options[i], 50) / 2, posY, 50, textColor);
+                  }
                }
-               DrawText(options[i], winWidth / 2 - MeasureText(options[i], 40) / 2, posY, 40, textColor);
-            }
+            EndTextureMode();
+
+            BeginDrawing();
+               ClearBackground(BLACK);
+
+               DrawTexturePro(menuRender.texture,
+                     (Rectangle) { 0.0f, 0.0f, (float) menuRender.texture.width, (float) - menuRender.texture.height },
+                     (Rectangle) { (GetScreenWidth() - (float) gameWidth * menuScale) * 0.5f, (GetScreenHeight() - (float) gameHeight * menuScale) * 0.5f, gameWidth * menuScale, gameHeight * menuScale },
+                     (Vector2) { 0.0f, 0.0f }, 0.0f, WHITE);
+            EndDrawing();
             break;
 
          case game:
-            ClearBackground(BLACK);
+            BeginTextureMode(target);
+               ClearBackground(BLACK);
 
-            // Drawl walls
-            for (int i = offset.x; i <= winWidth - (pixelSize.x + offset.x); i += pixelSize.x)
-            {
-               // Top row
-               DrawRectangle(i, offset.y, pixelSize.x, pixelSize.y, RAYWHITE);
-               DrawRectangleLines(i, offset.y, pixelSize.x, pixelSize.y, BLACK);
+               // Drawl walls
+               for (int i = 0; i <= gameWidth - gridScale; i += gridScale)
+               {
+                  // Top row
+                  DrawRectangle(i, scoreMargin, gridScale, gridScale, WHITE);
+                  DrawRectangleLines(i, scoreMargin, gridScale, gridScale, BLACK);
 
-               // Bottom row
-               DrawRectangle(i, winHeight - (pixelSize.y + offset.y), pixelSize.x, pixelSize.y, RAYWHITE);
-               DrawRectangleLines(i, winHeight - (pixelSize.y + offset.y), pixelSize.x, pixelSize.y, BLACK);
-            }
+                  // Bottom row
+                  DrawRectangle(i, gameHeight + scoreMargin - gridScale, gridScale, gridScale, WHITE);
+                  DrawRectangleLines(i, gameHeight + scoreMargin - gridScale, gridScale, gridScale, BLACK);
+               }
+               for (int i = gridScale + scoreMargin; i <= gameHeight + scoreMargin - gridScale * 2; i += gridScale)
+               {
+                  // Left row
+                  DrawRectangle(0, i, gridScale, gridScale, WHITE);
+                  DrawRectangleLines(0, i, gridScale, gridScale, BLACK);
 
-            for (int i = pixelSize.y + offset.y; i <= winHeight - (pixelSize.y * 2 + offset.y); i += pixelSize.y)
-            {
-               // Left row
-               DrawRectangle(offset.x, i, pixelSize.x, pixelSize.y, RAYWHITE);
-               DrawRectangleLines(offset.x, i, pixelSize.x, pixelSize.y, BLACK);
+                  // Right row
+                  DrawRectangle(gameWidth - gridScale, i, gridScale, gridScale, WHITE);
+                  DrawRectangleLines(gameWidth - gridScale, i, gridScale, gridScale, BLACK);
+               }
 
-               // Right row
-               DrawRectangle(winWidth - (pixelSize.x + offset.x), i, pixelSize.x, pixelSize.y, WHITE);
-               DrawRectangleLines(winWidth - (pixelSize.x + offset.x), i, pixelSize.x, pixelSize.y, BLACK);
-            }
+               // Draw the apple
+               DrawRectangle(applePos.x, applePos.y, gridScale, gridScale, RED);
+               DrawRectangleLines(applePos.x, applePos.y, gridScale, gridScale, BLACK);
 
-            // Draw the apple
-            DrawRectangleV(applePos, pixelSize, RED);
-            DrawRectangleLines(applePos.x, applePos.y, pixelSize.x, pixelSize.y, BLACK);
+               // Draw the snake
+               forEach(head, &DrawNode);
 
-            // Draw the snake
-            forEach(head, &DrawNode);
+               // Draw score
+               DrawText(TextFormat("Score: %d", appleCount), gridScale, scoreMargin / 4, 35, WHITE);
+               DrawText(TextFormat("Best: %d", appleBest), gameWidth - gridScale - MeasureText(TextFormat("Best: %d", appleBest), 35), scoreMargin / 4, 35, WHITE);
 
-            if (pause)
-            {
-               DrawText("PAUSED", winWidth / 2 - MeasureText("PAUSED", 30) / 2, winHeight / 2 - 30, 30, WHITE);
-            }
+               if (pause)
+               {
+                  DrawText("PAUSED", gameWidth / 2 - MeasureText("PAUSED", 30) / 2, gameHeight / 2 - 30 + scoreMargin, 40, WHITE);
+               }
+            EndTextureMode();
+
+            BeginDrawing();
+               ClearBackground(BLACK);
+               // texture, source, dest, origin, rotation, color tint
+               DrawTexturePro(target.texture,
+                     (Rectangle) { 0.0f, 0.0f, (float) target.texture.width, (float) - target.texture.height },
+                     (Rectangle) { (GetScreenWidth() - (float) gameWidth * targetScale) * 0.5f, (GetScreenHeight() - (float) (gameHeight + scoreMargin) * targetScale) * 0.5f, gameWidth * targetScale, (gameHeight + scoreMargin) * targetScale },
+                     (Vector2) { 0.0f, 0.0f }, 0.0f, WHITE);
+            EndDrawing();
             break;
 
          case gameover:
-            ClearBackground(BLACK);
+            BeginTextureMode(menuRender);
+               ClearBackground(BLACK);
 
-            DrawText("GAME OVER", GetScreenWidth() / 2 - MeasureText("GAME OVER", 30) / 2, GetScreenHeight() / 2 - 30, 30, WHITE);
+               DrawText("GAME OVER", gameWidth / 2 - MeasureText("GAME OVER", 40) / 2, gameHeight / 2 - 80, 40, WHITE);
 
-            textColor = GRAY;
-            for (int i = 0; i < 2; i++)
-            {
-               textColor = gameoverSelected == i ? WHITE : GRAY;
-               DrawText(gameoverOptions[i], GetScreenWidth() / 2 - MeasureText(gameoverOptions[i], 30) / 2, GetScreenHeight() / 2 + i * 30, 30, textColor);
-            }
+               textColor = GRAY;
+               for (int i = 0; i < 2; i++)
+               {
+                  textColor = gameoverSelected == i ? WHITE : GRAY;
+                  DrawText(gameoverOptions[i], gameWidth / 2 - MeasureText(gameoverOptions[i], 30) / 2, gameHeight / 2 + i * 40, 30, textColor);
+               }
+            EndTextureMode();
+
+            BeginDrawing();
+               ClearBackground(BLACK);
+
+               DrawTexturePro(menuRender.texture,
+                     (Rectangle) { 0.0f, 0.0f, (float) menuRender.texture.width, (float) - menuRender.texture.height },
+                     (Rectangle) { (GetScreenWidth() - (float) gameWidth * menuScale) * 0.5f, (GetScreenHeight() - (float) gameHeight * menuScale) * 0.5f, gameWidth * menuScale, gameHeight * menuScale },
+                     (Vector2) { 0.0f, 0.0f }, 0.0f, WHITE);
+            EndDrawing();
             break;
       }
-
-
-   EndDrawing();
 }
 
 static void DrawNode(node_t * node)
 {
-   DrawRectangleV(node->position, pixelSize, GREEN);
-   DrawRectangleLines(node->position.x, node->position.y, pixelSize.x, pixelSize.y, BLACK);
+   DrawRectangle(node->position.x, node->position.y, gridScale, gridScale, GREEN);
+   DrawRectangleLines(node->position.x, node->position.y, gridScale, gridScale, BLACK);
 }
 
 void SpawnApple()
 {
    // Prevents apple from spawning outside screen or inside the bottom and right walls
-   int maxX = gridWidth - 2;
-   int maxY = gridHeight - 2;
+   int max = gridSize - 2;
 
-   applePos.x = GetRandomValue(1, maxX) * pixelSize.x + offset.x;
-   applePos.y = GetRandomValue(1, maxY) * pixelSize.y + offset.y;
+   applePos.x = GetRandomValue(1, max) * gridScale;
+   applePos.y = GetRandomValue(1, max) * gridScale + scoreMargin;
 }
