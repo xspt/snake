@@ -203,10 +203,10 @@ void UpdateGame()
                // Check if snake has eaten apple
                if (head->position.x == applePos.x && head->position.y == applePos.y)
                {
+                  appleCount++;
+                  appleBest = appleCount > appleBest ? appleCount : appleBest;
                   do
                   {
-                     appleCount++;
-                     appleBest = appleCount > appleBest ? appleCount : appleBest;
                      SpawnApple();
                   }
                   while (isColliding(head, applePos));
@@ -224,7 +224,7 @@ void UpdateGame()
 
             // Collision check
             if (isColliding(head->next, head->position)
-                  ||headPos.x < gridScale
+                  || headPos.x < gridScale
                   || headPos.y < gridScale + scoreMargin
                   || headPos.x >= gameWidth - gridScale
                   || headPos.y >= gameHeight + scoreMargin - gridScale)
